@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Online Quiz App</title>
+
+  <!-- ===== STYLES ===== -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .box {
+      background: white;
+      width: 420px;
+      padding: 25px;
+      border-radius: 16px;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+      animation: fadeIn 0.5s ease;
+    }
+
+    h2 {
+      text-align: center;
+      color: #4f46e5;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 15px;
+      background: linear-gradient(to right, #6366f1, #8b5cf6);
+      color: white;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    #options button {
+      background: #f1f5f9;
+      color: #1e293b;
+      margin: 6px 0;
+    }
+
+    #options button:hover {
+      background: #c7d2fe;
+    }
+
+    .correct {
+      background: #22c55e !important;
+      color: white;
+    }
+
+    .wrong {
+      background: #ef4444 !important;
+      color: white;
+    }
+
+    #time {
+      font-weight: bold;
+      color: #ef4444;
+    }
+
+    ol li {
+      background: #eef2ff;
+      margin: 5px 0;
+      padding: 8px;
+      border-radius: 8px;
+    }
+
+    .dark body {
+      background: linear-gradient(135deg, #020617, #1e293b);
+    }
+
+    .dark .box {
+      background: #0f172a;
+      color: white;
+    }
+
+    .dark input, .dark select {
+      background: #020617;
+      color: white;
+      border: 1px solid #334155;
+    }
+
+    .dark button {
+      background: linear-gradient(to right, #0ea5e9, #6366f1);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 480px) {
+      .box {
+        width: 90%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="box">
+
+  <button onclick="toggleDark()">🌙 Dark Mode</button>
+
+  <!-- LOGIN -->
+  <div id="login">
+    <h2>Login</h2>
+    <input id="username" placeholder="Username">
+    <select id="role">
+      <option value="user">User</option>
+      <option value="admin">Admin</option>
+    </select>
+    <button onclick="login()">Login</button>
+  </div>
+
+  <!-- ADMIN -->
+  <div id="admin" class="hidden">
+    <h2>Admin Panel</h2>
+    <input id="q" placeholder="Question">
+    <input id="o1" placeholder="Option 1">
+    <input id="o2" placeholder="Option 2">
+    <input id="o3" placeholder="Option 3">
+    <input id="o4" placeholder="Option 4">
+    <input id="ans" placeholder="Correct Option (1-4)">
+    <button onclick="addQuestion()">Add Question</button>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <!-- QUIZ -->
+  <div id="quiz" class="hidden">
+    <h2 id="question"></h2>
+    <div id="options"></div>
+    <p>⏳ Time Left: <span id="time">15</span>s</p>
+  </div>
+
+  <!-- RESULT -->
+  <div id="result" class="hidden">
+    <h2>Your Score: <span id="score"></span></h2>
+    <button onclick="showLeaderboard()">Leaderboard</button>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div id="leaderboard" class="hidden">
+    <h2>Leaderboard</h2>
+    <ol id="board"></ol>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+</div>
+
+<!-- ===== SCRIPT ===== -->
+<script>
+const loginDiv = document.getElementById("login");
+const adminDiv = document.getElementById("admin");
+const quizDiv = document.getElementById("quiz");
+const resultDiv = document.getElementById("result");
+const leaderboardDiv = document.getElementById("leaderboard");
+
+const questionEl = document.getElementById("question");
+const optionsEl = document.getElementById("options");
+const timeEl = document.getElementById("time");
+const scoreEl = document.getElementById("score");
+const boardEl = document.getElementById("board");
+
+let questions = JSON.parse(localStorage.getItem("questions")) || [];
+let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+let currentUser = "";
+let index = 0, score = 0, timer;
+
+// LOGIN
+function login() {
+  const user = username.value;
+  const role = document.getElementById("role").value;
+
+  if (!user) return alert("Enter username");
+
+  currentUser = user;
+  loginDiv.classList.add("hidden");
+
+  if (role === "admin") {
+    adminDiv.classList.remove("hidden");
+  } else {
+    if (questions.length === 0) {
+      alert("No questions available. Ask admin to add.");
+      location.reload();
+      return;
+    }
+    quizDiv.classList.remove("hidden");
+    startQuiz();
+  }
+}
+
+// LOGOUT
+function logout() {
+  location.reload();
+}
+
+// ADMIN
+function addQuestion() {
+  questions.push({
+    q: q.value,
+    options: [o1.value, o2.value, o3.value, o4.value],
+    answer: Number(ans.value) - 1
+  });
+  localStorage.setItem("questions", JSON.stringify(questions));
+  alert("Question Added!");
+}
+
+// QUIZ
+function startQuiz() {
+  index = 0;
+  score = 0;
+  showQuestion();
+}
+
+function showQuestion() {
+  if (index >= questions.length) return endQuiz();
+
+  const qObj = questions[index];
+  questionEl.innerText = qObj.q;
+  optionsEl.innerHTML = "";
+
+  qObj.options.forEach((opt, i) => {
+    const btn = document.createElement("button");
+    btn.innerText = opt;
+    btn.onclick = () => checkAnswer(i);
+    optionsEl.appendChild(btn);
+  });
+
+  startTimer();
+}
+
+function startTimer() {
+  let timeLeft = 15;
+  timeEl.innerText = timeLeft;
+
+  timer = setInterval(() => {
+    timeLeft--;
+    timeEl.innerText = timeLeft;
+    if (timeLeft === 0) {
+      clearInterval(timer);
+      index++;
+      showQuestion();
+    }
+  }, 1000);
+}
+
+function checkAnswer(selected) {
+  clearInterval(timer);
+
+  const buttons = optionsEl.querySelectorAll("button");
+  buttons.forEach((btn, i) => {
+    if (i === questions[index].answer) btn.classList.add("correct");
+    if (i === selected && selected !== questions[index].answer)
+      btn.classList.add("wrong");
+    btn.disabled = true;
+  });
+
+  if (selected === questions[index].answer) score++;
+
+  setTimeout(() => {
+    index++;
+    showQuestion();
+  }, 800);
+}
+
+// RESULT
+function endQuiz() {
+  quizDiv.classList.add("hidden");
+  resultDiv.classList.remove("hidden");
+  scoreEl.innerText = score;
+
+  leaderboard.push({ user: currentUser, score });
+  localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+}
+
+function showLeaderboard() {
+  resultDiv.classList.add("hidden");
+  leaderboardDiv.classList.remove("hidden");
+  boardEl.innerHTML = "";
+
+  leaderboard.sort((a,b) => b.score - a.score)
+    .forEach(l => {
+      const li = document.createElement("li");
+      li.innerText = `${l.user} - ${l.score}`;
+      boardEl.appendChild(li);
+    });
+}
+
+// DARK MODE
+function toggleDark() {
+  document.documentElement.classList.toggle("dark");
+}
+</script>
+
+</body>
+</html>
